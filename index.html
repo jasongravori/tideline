@@ -123,23 +123,43 @@ main { padding: calc(env(safe-area-inset-top, 0px) + 22px) 20px calc(env(safe-ar
   text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
 }
 
-/* ── Ring hero ── */
-.ring-wrap { position: relative; width: 224px; height: 224px; margin: 6px auto 4px; }
-.ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.ring-track { stroke: var(--border-light); }
-.ring-fill { stroke: var(--accent); transition: stroke-dashoffset .6s cubic-bezier(.22,1,.36,1), stroke .3s; }
-.ring-fill.warn { stroke: var(--gold); }
-.ring-fill.over { stroke: var(--red); }
-.ring-center {
-  position: absolute; inset: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; text-align: center;
-}
-.ring-num {
-  font-family: var(--serif); font-size: 54px; font-weight: 500;
+/* ── Tide meter hero ── */
+.tide-hero { text-align: center; margin: 10px 0 2px; }
+.tide-num {
+  font-family: var(--serif); font-size: 56px; font-weight: 500;
   letter-spacing: -0.02em; line-height: 1; font-variant-numeric: lining-nums;
 }
-.ring-num.over { color: var(--red); }
-.ring-label { font-size: 12px; color: var(--muted); margin-top: 6px; letter-spacing: 0.06em; text-transform: uppercase; }
+.tide-num.warn { color: var(--gold); }
+.tide-num.over { color: var(--red); }
+.tide-lbl { font-size: 12px; color: var(--muted); margin-top: 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+.tide-bar {
+  position: relative; height: 34px; border-radius: 999px;
+  background: var(--ivory); border: 1px solid var(--border-light);
+  margin-top: 18px; overflow: hidden;
+}
+.tide-bar i { display: block; }
+.tide-burn {
+  position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px;
+  background: var(--sage-light); border-right: 2px solid var(--sage);
+  transition: width .6s cubic-bezier(.22,1,.36,1);
+}
+.tide-reserve {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  background: repeating-linear-gradient(-55deg, transparent 0 5px, color-mix(in srgb, var(--sage) 24%, transparent) 5px 7px);
+  border-left: 1px dashed var(--sage);
+}
+.tide-eat {
+  position: absolute; left: 4px; top: 4px; bottom: 4px; border-radius: 999px;
+  background: var(--accent);
+  transition: width .6s cubic-bezier(.22,1,.36,1);
+}
+.tide-eat.warn { background: var(--gold); }
+.tide-eat.over { background: var(--red); }
+.tide-legend {
+  display: flex; justify-content: space-between; gap: 8px; margin-top: 10px;
+  font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--whisper);
+}
+.tide-legend b { color: var(--muted); font-weight: 600; }
 .conditions {
   text-align: center; font-family: var(--serif); font-style: italic;
   font-size: 17px; color: var(--ink-soft); margin: 14px 0 4px; line-height: 1.4;
@@ -271,6 +291,7 @@ input, select, button, textarea { font-family: inherit; color: inherit; }
 .day-date { font-family: var(--serif); font-size: 18px; font-weight: 500; flex: 1; }
 .day-net { font-family: var(--serif); font-size: 17px; }
 .day-net.under { color: var(--sage); }
+.day-net.close { color: var(--gold); }
 .day-net.over { color: var(--red); }
 .day-meta { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
 .day-bar { height: 4px; border-radius: 2px; background: var(--border-light); margin-top: 10px; overflow: hidden; }
@@ -361,22 +382,25 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
     </svg>
 
     <div class="card">
-      <div class="ring-wrap">
-        <svg viewBox="0 0 200 200">
-          <circle class="ring-track" cx="100" cy="100" r="86" fill="none" stroke-width="10"/>
-          <circle class="ring-fill" id="ring-fill" cx="100" cy="100" r="86" fill="none" stroke-width="10"
-                  stroke-linecap="round" stroke-dasharray="540.35" stroke-dashoffset="540.35"/>
-        </svg>
-        <div class="ring-center">
-          <div class="ring-num" id="ring-num">0</div>
-          <div class="ring-label" id="ring-lbl">kcal left</div>
-        </div>
+      <div class="tide-hero">
+        <div class="tide-num" id="tide-num">0</div>
+        <div class="tide-lbl" id="tide-lbl">kcal left to eat today</div>
+      </div>
+      <div class="tide-bar" role="img" aria-label="Tide meter — burn rises, eating fills, the reserve is your deficit goal">
+        <i class="tide-burn" id="tide-burn"></i>
+        <i class="tide-reserve" id="tide-reserve"></i>
+        <i class="tide-eat" id="tide-eat"></i>
+      </div>
+      <div class="tide-legend">
+        <span><b>eaten</b></span>
+        <span><b>tide</b> · burn so far</span>
+        <span>keep <b id="lg-reserve">500</b></span>
       </div>
       <p class="conditions" id="conditions"></p>
       <div class="ledger">
         <div><div class="num in" id="led-eaten">0</div><div class="lbl">Eaten</div></div>
         <div><div class="num out" id="led-burned">0</div><div class="lbl">Burned</div></div>
-        <div><div class="num" id="led-net">0</div><div class="lbl">Net</div></div>
+        <div><div class="num" id="led-net">0</div><div class="lbl">Deficit</div></div>
         <div><div class="num" id="led-goal">0</div><div class="lbl">Goal</div></div>
       </div>
     </div>
@@ -492,8 +516,8 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
 
     <div class="card">
       <div class="set-row">
-        <div class="set-label">Daily calorie goal</div>
-        <div class="set-desc">Your target net calories per day (eaten minus burned). Set it below maintenance to lose fat.</div>
+        <div class="set-label">Daily deficit goal</div>
+        <div class="set-desc">How many more calories you want to burn than eat each day. Around 500 is roughly a pound of fat a week. This is the hatched reserve at the end of the tide bar.</div>
         <div class="set-inline">
           <input class="field" id="set-goal" type="text" inputmode="numeric" autocomplete="off">
           <span class="set-unit">kcal</span>
@@ -517,7 +541,7 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
       </div>
       <div class="set-row">
         <div class="set-label">Maintenance calories</div>
-        <div class="set-desc">Roughly what you burn in a day before exercise (TDEE). The coach uses this to judge whether a food keeps you in a fat-loss deficit. Leave blank to estimate from your weight.</div>
+        <div class="set-desc">Roughly what you burn in a day before exercise (TDEE). This drives the tide — your burn accrues from it minute by minute through the day, with workouts and steps on top. Leave blank to estimate from your weight.</div>
         <div class="set-inline">
           <input class="field" id="set-maint" type="text" inputmode="numeric" autocomplete="off" placeholder="">
           <span class="set-unit">kcal</span>
@@ -678,7 +702,7 @@ const ACTIVITIES = [
 /* ═══════════ State ═══════════ */
 
 const STORE_KEY = 'tideline.v1';
-const DEFAULTS = { goal: 2200, weightKg: 79.4, units: 'imperial', maint: null };
+const DEFAULTS = { deficitGoal: 500, weightKg: 79.4, units: 'imperial', maint: null };
 
 let state = loadState();
 
@@ -688,7 +712,14 @@ function loadState() {
     if (raw) {
       const s = JSON.parse(raw);
       if (s && typeof s === 'object' && s.days) {
-        s.settings = Object.assign({}, DEFAULTS, s.settings);
+        const prior = s.settings || {};
+        s.settings = Object.assign({}, DEFAULTS, prior);
+        // Migrate from the old net-calorie goal: deficit = maintenance − goal
+        if (prior.deficitGoal == null && isFinite(prior.goal)) {
+          const maintEst = s.settings.maint || Math.round(s.settings.weightKg * 2.20462 * 14);
+          s.settings.deficitGoal = Math.min(2000, Math.max(0, Math.round((maintEst - prior.goal) / 10) * 10));
+        }
+        delete s.settings.goal;
         s.recents = s.recents || {};
         return s;
       }
@@ -736,7 +767,7 @@ function dayTotals(key) {
   if (day) for (const e of day.entries) {
     if (e.type === 'food') eaten += e.kcal; else burned += e.kcal;
   }
-  return { eaten, burned, net: eaten - burned };
+  return { eaten, burned };
 }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function timeLabel(ts) {
@@ -806,43 +837,79 @@ document.querySelectorAll('.tab').forEach(t =>
 
 /* ═══════════ Today ═══════════ */
 
-const RING_C = 540.35;
+/* The tide: maintenance burn accrues minute by minute, workouts and steps stack on top. */
+function tideNow(key) {
+  const { eaten, burned } = dayTotals(key);           // burned = logged exercise only
+  const maint = maintenance();
+  const frac = key === todayKey()
+    ? Math.min(1, Math.max(0, (Date.now() - keyToDate(key).getTime()) / 86400000))
+    : 1;
+  return {
+    eaten,
+    exercise: burned,
+    tide: maint * frac + burned,                       // burned so far, on its own
+    total: maint + burned,                             // the whole day's burn
+  };
+}
 
-function conditionsLine(remaining, goal, burned) {
-  if (remaining < 0) return 'Over by ' + fmt(-remaining) + ' — tomorrow’s a clean slate.';
-  const frac = remaining / Math.max(1, goal);
-  if (frac >= 0.6) return 'Wide open — plenty of runway today.';
-  if (frac >= 0.3) return burned > 300
-    ? 'Steady lines, and you’ve earned back ' + fmt(burned) + '.'
-    : 'Steady lines. You’re pacing well.';
-  return 'Getting shallow — ' + fmt(remaining) + ' left. Choose well.';
+function catchUpLabel(eaten, exercise) {
+  const f = (eaten - exercise) / Math.max(1, maintenance());
+  if (f > 1) return null;
+  const t = new Date(keyToDate(todayKey()).getTime() + f * 86400000);
+  return t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function conditionsLine(t, leftToday, deficitNow) {
+  if (t.eaten > t.total)
+    return 'Past the whole tide — surplus water. Tomorrow’s a clean slate.';
+  if (leftToday < 0) {
+    const walkMin = Math.ceil(-leftToday / Math.max(0.1, workoutKcal(3.5, 1)));
+    return 'Into the reserve — today’s deficit lands at ' + fmt(t.total - t.eaten) +
+      ' unless you move. A ' + walkMin + '-min walk restores the line.';
+  }
+  if (deficitNow < 0) {
+    const at = catchUpLabel(t.eaten, t.exercise);
+    return at ? 'Ahead of the tide — it catches you up around ' + at + '.'
+              : 'Ahead of the tide — it catches up as the day burns on.';
+  }
+  if (t.eaten === 0)
+    return 'The tide’s rising — ' + fmt(t.tide) + ' kcal burned already, all still yours.';
+  return 'Below the tide — ' + fmt(deficitNow) + ' banked and the water’s still rising.';
 }
 
 function renderToday() {
   const key = todayKey();
-  const { eaten, burned, net } = dayTotals(key);
-  const goal = state.settings.goal;
-  const budget = goal + burned;
-  const remaining = budget - eaten;
-  const frac = eaten / Math.max(1, budget);
+  const t = tideNow(key);
+  const goalDef = state.settings.deficitGoal;
+  const leftToday = t.total - goalDef - t.eaten;       // room left before the reserve
+  const deficitNow = t.tide - t.eaten;
+  const surplus = t.eaten > t.total;
 
   $('today-date').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const ring = $('ring-fill');
-  ring.style.strokeDashoffset = String(RING_C * (1 - Math.min(1, Math.max(0, frac))));
-  ring.classList.toggle('warn', frac >= 0.9 && frac <= 1);
-  ring.classList.toggle('over', frac > 1);
+  const num = $('tide-num');
+  num.textContent = fmt(surplus ? t.eaten - t.total : Math.abs(leftToday));
+  num.classList.toggle('over', surplus);
+  num.classList.toggle('warn', leftToday < 0 && !surplus);
+  $('tide-lbl').textContent = leftToday < 0
+    ? (surplus ? 'kcal past the whole tide' : 'kcal into your reserve')
+    : 'kcal left to eat today';
 
-  const num = $('ring-num');
-  num.textContent = fmt(Math.abs(remaining));
-  num.classList.toggle('over', remaining < 0);
-  $('ring-lbl').textContent = remaining < 0 ? 'kcal over' : 'kcal left';
-  $('conditions').textContent = conditionsLine(remaining, goal, burned);
+  const pct = v => Math.min(100, Math.max(0, v / Math.max(1, t.total) * 100));
+  $('tide-burn').style.width = pct(t.tide) + '%';
+  $('tide-reserve').style.width = pct(goalDef) + '%';
+  const eat = $('tide-eat');
+  eat.style.width = t.eaten > 0 ? 'max(12px, calc(' + pct(t.eaten) + '% - 8px))' : '0';
+  eat.classList.toggle('warn', leftToday < 0 && !surplus);
+  eat.classList.toggle('over', surplus);
+  $('lg-reserve').textContent = fmt(goalDef);
 
-  $('led-eaten').textContent = fmt(eaten);
-  $('led-burned').textContent = burned ? '−' + fmt(burned) : '0';
-  $('led-net').textContent = fmt(net);
-  $('led-goal').textContent = fmt(goal);
+  $('conditions').textContent = conditionsLine(t, leftToday, deficitNow);
+
+  $('led-eaten').textContent = fmt(t.eaten);
+  $('led-burned').textContent = fmt(t.tide);
+  $('led-net').textContent = (deficitNow < 0 ? '−' : '') + fmt(Math.abs(deficitNow));
+  $('led-goal').textContent = fmt(goalDef);
 
   // Entries
   const day = state.days[key];
@@ -929,33 +996,29 @@ function coachSearch(q) {
 function renderVerdict() {
   if (!coachPick) return;
   const { name, kcal } = coachPick;
-  const { eaten, burned } = dayTotals(todayKey());
-  const goal = state.settings.goal;
-  const remaining = goal + burned - eaten;
-  const after = remaining - kcal;
-  const maint = maintenance();
-  const maintRoom = (maint + burned) - eaten;       // room before you stop losing
-  const maintAfter = maintRoom - kcal;
-  const walkRate = workoutKcal(3.5, 1);             // kcal per minute of walking
+  const t = tideNow(todayKey());
+  const goalDef = state.settings.deficitGoal;
+  const after = t.total - goalDef - t.eaten - kcal;  // room left before the reserve, once eaten
+  const projDef = t.total - t.eaten - kcal;          // where today's deficit would land
+  const walkRate = workoutKcal(3.5, 1);              // kcal per minute of walking
 
   let word, cls, body;
   if (after >= 0) {
     word = 'Go for it.'; cls = 'yes';
-    body = '<b>' + esc(name) + '</b> (' + fmt(kcal) + ' kcal) fits — you’d still have <b>' +
-      fmt(after) + ' kcal</b> left against your goal' +
-      (maintAfter > 0 ? ', and you’d stay roughly <b>' + fmt(maintAfter) + ' kcal under maintenance</b>. Fat loss stays on track.' : '.');
-  } else if (maintAfter >= 0) {
+    body = '<b>' + esc(name) + '</b> (' + fmt(kcal) + ' kcal) fits inside the tide — you’d still finish around a <b>' +
+      fmt(projDef) + ' kcal deficit</b>, with <b>' + fmt(after) + ' kcal</b> of room before your reserve.';
+  } else if (projDef > 0) {
     word = 'It’ll slow you, not stop you.'; cls = 'close';
     const offset = Math.ceil(-after / Math.max(0.1, walkRate));
-    body = '<b>' + esc(name) + '</b> puts you <b>' + fmt(-after) + ' kcal past your goal</b>, but still about <b>' +
-      fmt(maintAfter) + ' kcal under maintenance</b> — you’d keep losing, just slower. A ~<b>' +
-      offset + '-minute walk</b> would square it back to goal.';
+    body = '<b>' + esc(name) + '</b> eats <b>' + fmt(-after) + ' kcal into your reserve</b> — today’s deficit shrinks to about <b>' +
+      fmt(projDef) + '</b> against your ' + fmt(goalDef) + ' goal. Still a deficit, just slower. A ~<b>' +
+      offset + '-minute walk</b> raises the tide enough to cover it.';
   } else {
     word = 'Hold off.'; cls = 'no';
     const offset = Math.ceil(-after / Math.max(0.1, walkRate));
     const runOffset = Math.ceil(-after / Math.max(0.1, workoutKcal(9.0, 1)));
-    body = '<b>' + esc(name) + '</b> would push you about <b>' + fmt(-maintAfter) +
-      ' kcal over maintenance</b> — surplus territory, working against fat loss. If you really want it: half a portion (' +
+    body = '<b>' + esc(name) + '</b> would put you about <b>' + fmt(-projDef) +
+      ' kcal past everything you’ll burn today</b> — surplus territory. If you really want it: half a portion (' +
       fmt(kcal / 2) + ' kcal) sits closer, or offset with a <b>' + offset + '-min walk</b> / <b>' + runOffset + '-min run</b>.';
   }
 
@@ -1145,18 +1208,22 @@ function renderHistory() {
     return;
   }
   const tk = todayKey();
-  const goal = state.settings.goal;
+  const goalDef = state.settings.deficitGoal;
+  const maint = maintenance();
   list.innerHTML = keys.map(k => {
-    const { eaten, burned, net } = dayTotals(k);
-    const budget = goal + burned;
+    const { eaten, burned } = dayTotals(k);
+    const total = maint + burned;                      // whole day's burn, tide included
+    const def = total - eaten;
+    const budget = total - goalDef;
     const frac = eaten / Math.max(1, budget);
-    const over = net > goal;
+    const cls = def < 0 ? 'over' : (def < goalDef ? 'close' : 'under');
+    const chip = def < 0 ? fmt(-def) + ' surplus' : fmt(def) + ' deficit';
     const label = k === tk ? 'Today' : keyToDate(k).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     const barCls = frac > 1 ? ' over' : (frac >= 0.9 ? ' warn' : '');
     return '<div class="day-row" data-k="' + k + '">' +
       '<div class="day-head"><span class="day-date">' + label + '</span>' +
-      '<span class="day-net ' + (over ? 'over' : 'under') + '">' + fmt(net) + ' net</span></div>' +
-      '<div class="day-meta">' + fmt(eaten) + ' eaten · ' + fmt(burned) + ' burned · goal ' + fmt(goal) + '</div>' +
+      '<span class="day-net ' + cls + '">' + chip + '</span></div>' +
+      '<div class="day-meta">' + fmt(eaten) + ' eaten · ' + fmt(total) + ' burned · goal ' + fmt(goalDef) + ' deficit</div>' +
       '<div class="day-bar"><i class="' + barCls.trim() + '" style="width:' + Math.min(100, frac * 100) + '%"></i></div>' +
       '<div class="day-detail" id="detail-' + k + '"></div></div>';
   }).join('');
@@ -1239,7 +1306,7 @@ $('sheet-save').addEventListener('click', () => {
 
 function renderSettings() {
   const s = state.settings;
-  $('set-goal').value = s.goal;
+  $('set-goal').value = s.deficitGoal;
   $('set-units').querySelectorAll('button').forEach(b =>
     b.classList.toggle('active', b.dataset.u === s.units));
   const metric = s.units === 'metric';
@@ -1250,10 +1317,10 @@ function renderSettings() {
 }
 $('set-goal').addEventListener('change', e => {
   const n = parseNum(e.target.value);
-  if (isFinite(n) && n >= 500 && n <= 10000) {
-    state.settings.goal = Math.round(n);
-    saveState(); toast('Goal saved'); renderToday(); renderHistory();
-  } else { toast('Goal should be 500–10,000 kcal'); renderSettings(); }
+  if (isFinite(n) && n >= 0 && n <= 2000) {
+    state.settings.deficitGoal = Math.round(n);
+    saveState(); toast('Deficit goal saved'); renderToday(); renderHistory();
+  } else { toast('Deficit should be 0–2,000 kcal'); renderSettings(); }
 });
 $('set-units').querySelectorAll('button').forEach(b =>
   b.addEventListener('click', () => {
@@ -1319,8 +1386,13 @@ function rolloverCheck() {
     toast('New day — the ledger’s reset');
   }
 }
-setInterval(rolloverCheck, 30000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) rolloverCheck(); });
+setInterval(() => {
+  rolloverCheck();
+  if (currentView === 'today') renderToday();          // the tide rises on its own
+}, 30000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { rolloverCheck(); if (currentView === 'today') renderToday(); }
+});
 
 /* ═══════════ Boot ═══════════ */
 

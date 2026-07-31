@@ -160,6 +160,20 @@ main { padding: calc(env(safe-area-inset-top, 0px) + 22px) 20px calc(env(safe-ar
   font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--whisper);
 }
 .tide-legend b { color: var(--muted); font-weight: 600; }
+
+/* ── Macros ── */
+.macro + .macro { margin-top: 16px; }
+.macro-head { display: flex; align-items: baseline; justify-content: space-between; }
+.macro-name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.macro-nums { font-size: 13px; color: var(--muted); }
+.macro-nums b { font-family: var(--serif); font-size: 17px; font-weight: 500; color: var(--ink); }
+.macro-bar { height: 6px; border-radius: 3px; background: var(--border-light); margin-top: 8px; overflow: hidden; }
+.macro-bar i { display: block; height: 100%; border-radius: 3px; transition: width .5s cubic-bezier(.22,1,.36,1); }
+.macro-bar .p { background: var(--accent); }
+.macro-bar .c { background: var(--sage); }
+.macro-bar .f { background: var(--gold); }
+.macro-bar i.over { background: var(--red); }
+.macro-note { font-family: var(--serif); font-style: italic; font-size: 14.5px; color: var(--ink-soft); margin-top: 7px; }
 .conditions {
   text-align: center; font-family: var(--serif); font-style: italic;
   font-size: 17px; color: var(--ink-soft); margin: 14px 0 4px; line-height: 1.4;
@@ -184,7 +198,9 @@ main { padding: calc(env(safe-area-inset-top, 0px) + 22px) 20px calc(env(safe-ar
 .entry:last-child { border-bottom: none; }
 .entry-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--accent); }
 .entry-dot.burn { background: var(--sage); }
-.entry-name { flex: 1; font-size: 15px; line-height: 1.35; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.entry-name { font-size: 15px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-macros { font-size: 11.5px; color: var(--whisper); letter-spacing: 0.02em; }
 .entry-time { font-size: 12px; color: var(--whisper); flex: none; }
 .entry-kcal { font-family: var(--serif); font-size: 17px; font-weight: 500; flex: none; min-width: 58px; text-align: right; }
 .entry-kcal.burn { color: var(--sage); }
@@ -258,7 +274,9 @@ input, select, button, textarea { font-family: inherit; color: inherit; }
   border-bottom: 1px solid var(--border-light); cursor: pointer; min-height: 48px;
 }
 .db-row:active { background: var(--accent-wash); }
-.db-name { flex: 1; font-size: 15px; }
+.db-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.db-name { font-size: 15px; }
+.db-macros { font-size: 11.5px; color: var(--whisper); letter-spacing: 0.02em; }
 .db-kcal { font-family: var(--serif); font-size: 16px; color: var(--ink-soft); }
 .db-add { color: var(--accent); font-size: 21px; line-height: 1; width: 30px; text-align: center; flex: none; }
 
@@ -405,6 +423,24 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-label">Macros</div>
+      <div class="macro">
+        <div class="macro-head"><span class="macro-name">Protein</span><span class="macro-nums"><b id="mac-p-eaten">0</b> of <span id="mac-p-target">0</span> g</span></div>
+        <div class="macro-bar"><i class="p" id="mac-p-bar"></i></div>
+        <div class="macro-note" id="mac-p-note"></div>
+      </div>
+      <div class="macro">
+        <div class="macro-head"><span class="macro-name">Carbs</span><span class="macro-nums"><b id="mac-c-eaten">0</b> of <span id="mac-c-target">0</span> g</span></div>
+        <div class="macro-bar"><i class="c" id="mac-c-bar"></i></div>
+      </div>
+      <div class="macro">
+        <div class="macro-head"><span class="macro-name">Fat</span><span class="macro-nums"><b id="mac-f-eaten">0</b> of <span id="mac-f-target">0</span> g</span></div>
+        <div class="macro-bar"><i class="f" id="mac-f-bar"></i></div>
+      </div>
+      <p class="hint" id="macro-hint"></p>
+    </div>
+
     <div class="card" id="coach-card">
       <div class="card-label">Should I eat it?</div>
       <input class="field" id="coach-input" type="search" autocomplete="off"
@@ -441,7 +477,13 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
           <input class="field grow" id="qa-name" type="text" placeholder="What was it?" autocomplete="off">
           <input class="field kcal-w" id="qa-kcal" type="text" inputmode="numeric" placeholder="kcal" autocomplete="off">
         </div>
+        <div class="form-row">
+          <input class="field grow" id="qa-p" type="text" inputmode="numeric" placeholder="protein g" autocomplete="off">
+          <input class="field grow" id="qa-c" type="text" inputmode="numeric" placeholder="carbs g" autocomplete="off">
+          <input class="field grow" id="qa-f" type="text" inputmode="numeric" placeholder="fat g" autocomplete="off">
+        </div>
         <button class="btn" id="qa-add">Add to today</button>
+        <p class="hint">Macros are optional — name and calories is still the fast path.</p>
       </div>
 
       <div id="frequent-block">
@@ -599,6 +641,11 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
     <input class="field grow" id="sheet-name" type="text" autocomplete="off">
     <input class="field kcal-w" id="sheet-kcal" type="text" inputmode="numeric" autocomplete="off">
   </div>
+  <div class="form-row" id="sheet-macros">
+    <input class="field grow" id="sheet-p" type="text" inputmode="numeric" placeholder="protein g" autocomplete="off">
+    <input class="field grow" id="sheet-c" type="text" inputmode="numeric" placeholder="carbs g" autocomplete="off">
+    <input class="field grow" id="sheet-f" type="text" inputmode="numeric" placeholder="fat g" autocomplete="off">
+  </div>
   <div class="sheet-actions">
     <button class="btn secondary" id="sheet-cancel">Cancel</button>
     <button class="btn" id="sheet-save">Save</button>
@@ -612,84 +659,85 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
 
 /* ═══════════ Data ═══════════ */
 
+// [name, kcal, category, protein g, carbs g, fat g]
 const FOODS = [
   // Fruit
-  ['Banana', 105, 'Fruit'], ['Apple', 95, 'Fruit'], ['Orange', 62, 'Fruit'],
-  ['Strawberries (1 cup)', 49, 'Fruit'], ['Blueberries (1 cup)', 84, 'Fruit'],
-  ['Grapes (1 cup)', 104, 'Fruit'], ['Watermelon (1 cup)', 46, 'Fruit'],
-  ['Mango', 200, 'Fruit'], ['Avocado (half)', 120, 'Fruit'], ['Peach', 59, 'Fruit'],
-  ['Pear', 101, 'Fruit'], ['Pineapple (1 cup)', 82, 'Fruit'],
-  ['Raspberries (1 cup)', 64, 'Fruit'], ['Cherries (1 cup)', 87, 'Fruit'],
+  ['Banana', 105, 'Fruit', 1, 27, 0], ['Apple', 95, 'Fruit', 0, 25, 0], ['Orange', 62, 'Fruit', 1, 15, 0],
+  ['Strawberries (1 cup)', 49, 'Fruit', 1, 12, 0], ['Blueberries (1 cup)', 84, 'Fruit', 1, 21, 0],
+  ['Grapes (1 cup)', 104, 'Fruit', 1, 27, 0], ['Watermelon (1 cup)', 46, 'Fruit', 1, 12, 0],
+  ['Mango', 200, 'Fruit', 3, 50, 1], ['Avocado (half)', 120, 'Fruit', 1, 6, 11], ['Peach', 59, 'Fruit', 1, 14, 0],
+  ['Pear', 101, 'Fruit', 1, 27, 0], ['Pineapple (1 cup)', 82, 'Fruit', 1, 22, 0],
+  ['Raspberries (1 cup)', 64, 'Fruit', 1, 15, 1], ['Cherries (1 cup)', 87, 'Fruit', 1, 22, 0],
   // Vegetables & sides
-  ['Baby carrots (10)', 35, 'Veg & sides'], ['Broccoli (1 cup)', 55, 'Veg & sides'],
-  ['Side salad', 100, 'Veg & sides'], ['Sweet potato', 112, 'Veg & sides'],
-  ['Baked potato', 160, 'Veg & sides'], ['Corn on the cob', 90, 'Veg & sides'],
-  ['Edamame (1 cup)', 188, 'Veg & sides'], ['Hummus (2 tbsp)', 70, 'Veg & sides'],
-  ['Guacamole (2 tbsp)', 50, 'Veg & sides'], ['Cucumber', 16, 'Veg & sides'],
+  ['Baby carrots (10)', 35, 'Veg & sides', 1, 8, 0], ['Broccoli (1 cup)', 55, 'Veg & sides', 4, 11, 0],
+  ['Side salad', 100, 'Veg & sides', 2, 7, 7], ['Sweet potato', 112, 'Veg & sides', 2, 26, 0],
+  ['Baked potato', 160, 'Veg & sides', 4, 37, 0], ['Corn on the cob', 90, 'Veg & sides', 3, 19, 1],
+  ['Edamame (1 cup)', 188, 'Veg & sides', 18, 14, 8], ['Hummus (2 tbsp)', 70, 'Veg & sides', 2, 6, 5],
+  ['Guacamole (2 tbsp)', 50, 'Veg & sides', 1, 3, 4], ['Cucumber', 16, 'Veg & sides', 1, 4, 0],
   // Protein
-  ['Chicken breast (6 oz)', 280, 'Protein'], ['Grilled salmon (6 oz)', 350, 'Protein'],
-  ['Ground beef patty (4 oz)', 290, 'Protein'], ['Sirloin steak (8 oz)', 460, 'Protein'],
-  ['Scrambled eggs (2)', 180, 'Protein'], ['Hard-boiled egg', 78, 'Protein'],
-  ['Bacon (2 slices)', 90, 'Protein'], ['Turkey slices (3 oz)', 90, 'Protein'],
-  ['Canned tuna', 190, 'Protein'], ['Shrimp (6 oz)', 170, 'Protein'],
-  ['Tofu (6 oz)', 150, 'Protein'], ['Pork chop', 250, 'Protein'],
-  ['Rotisserie chicken thigh', 180, 'Protein'],
+  ['Chicken breast (6 oz)', 280, 'Protein', 52, 0, 6], ['Grilled salmon (6 oz)', 350, 'Protein', 38, 0, 22],
+  ['Ground beef patty (4 oz)', 290, 'Protein', 24, 0, 21], ['Sirloin steak (8 oz)', 460, 'Protein', 62, 0, 22],
+  ['Scrambled eggs (2)', 180, 'Protein', 12, 2, 13], ['Hard-boiled egg', 78, 'Protein', 6, 1, 5],
+  ['Bacon (2 slices)', 90, 'Protein', 6, 0, 7], ['Turkey slices (3 oz)', 90, 'Protein', 15, 2, 2],
+  ['Canned tuna', 190, 'Protein', 42, 0, 1], ['Shrimp (6 oz)', 170, 'Protein', 35, 2, 2],
+  ['Tofu (6 oz)', 150, 'Protein', 16, 4, 9], ['Pork chop', 250, 'Protein', 33, 0, 13],
+  ['Rotisserie chicken thigh', 180, 'Protein', 22, 0, 10],
   // Grains & breakfast
-  ['White rice (1 cup)', 205, 'Grains & breakfast'], ['Brown rice (1 cup)', 215, 'Grains & breakfast'],
-  ['Quinoa (1 cup)', 222, 'Grains & breakfast'], ['Pasta w/ marinara (1.5 cup)', 380, 'Grains & breakfast'],
-  ['Bread (1 slice)', 80, 'Grains & breakfast'], ['Bagel', 280, 'Grains & breakfast'],
-  ['Flour tortilla', 140, 'Grains & breakfast'], ['Oatmeal (1 cup)', 160, 'Grains & breakfast'],
-  ['Granola (1/2 cup)', 210, 'Grains & breakfast'], ['Cereal w/ milk', 250, 'Grains & breakfast'],
-  ['Pancakes (2, w/ syrup)', 350, 'Grains & breakfast'], ['Waffle', 220, 'Grains & breakfast'],
-  ['English muffin', 130, 'Grains & breakfast'], ['Croissant', 260, 'Grains & breakfast'],
-  ['Avocado toast', 300, 'Grains & breakfast'], ['Breakfast burrito', 550, 'Grains & breakfast'],
-  ['Omelet (3-egg, cheese)', 400, 'Grains & breakfast'], ['Acai bowl', 450, 'Grains & breakfast'],
+  ['White rice (1 cup)', 205, 'Grains & breakfast', 4, 45, 0], ['Brown rice (1 cup)', 215, 'Grains & breakfast', 5, 45, 2],
+  ['Quinoa (1 cup)', 222, 'Grains & breakfast', 8, 39, 4], ['Pasta w/ marinara (1.5 cup)', 380, 'Grains & breakfast', 13, 64, 8],
+  ['Bread (1 slice)', 80, 'Grains & breakfast', 3, 15, 1], ['Bagel', 280, 'Grains & breakfast', 11, 56, 2],
+  ['Flour tortilla', 140, 'Grains & breakfast', 4, 24, 4], ['Oatmeal (1 cup)', 160, 'Grains & breakfast', 6, 27, 3],
+  ['Granola (1/2 cup)', 210, 'Grains & breakfast', 5, 32, 7], ['Cereal w/ milk', 250, 'Grains & breakfast', 9, 45, 5],
+  ['Pancakes (2, w/ syrup)', 350, 'Grains & breakfast', 8, 60, 9], ['Waffle', 220, 'Grains & breakfast', 6, 33, 8],
+  ['English muffin', 130, 'Grains & breakfast', 5, 25, 1], ['Croissant', 260, 'Grains & breakfast', 5, 26, 15],
+  ['Avocado toast', 300, 'Grains & breakfast', 7, 30, 17], ['Breakfast burrito', 550, 'Grains & breakfast', 24, 50, 28],
+  ['Omelet (3-egg, cheese)', 400, 'Grains & breakfast', 28, 3, 30], ['Acai bowl', 450, 'Grains & breakfast', 8, 80, 12],
   // Dairy
-  ['Greek yogurt (1 cup)', 130, 'Dairy'], ['Milk (1 cup)', 120, 'Dairy'],
-  ['Almond milk (1 cup)', 40, 'Dairy'], ['Cheddar (1 oz)', 115, 'Dairy'],
-  ['String cheese', 80, 'Dairy'], ['Cottage cheese (1 cup)', 220, 'Dairy'],
-  ['Butter (1 tbsp)', 100, 'Dairy'], ['Cream cheese (2 tbsp)', 100, 'Dairy'],
+  ['Greek yogurt (1 cup)', 130, 'Dairy', 22, 8, 0], ['Milk (1 cup)', 120, 'Dairy', 8, 12, 5],
+  ['Almond milk (1 cup)', 40, 'Dairy', 1, 2, 3], ['Cheddar (1 oz)', 115, 'Dairy', 7, 0, 9],
+  ['String cheese', 80, 'Dairy', 7, 1, 6], ['Cottage cheese (1 cup)', 220, 'Dairy', 25, 8, 10],
+  ['Butter (1 tbsp)', 100, 'Dairy', 0, 0, 11], ['Cream cheese (2 tbsp)', 100, 'Dairy', 2, 2, 9],
   // Meals
-  ['Chicken burrito', 950, 'Meals'], ['Burrito bowl', 700, 'Meals'],
-  ['Turkey sandwich', 350, 'Meals'], ['PB&J sandwich', 380, 'Meals'],
-  ['Grilled cheese', 400, 'Meals'], ['Caesar salad w/ chicken', 470, 'Meals'],
-  ['Cobb salad', 520, 'Meals'], ['Chicken quesadilla', 520, 'Meals'],
-  ['California roll (8 pc)', 255, 'Meals'], ['Poke bowl', 550, 'Meals'],
-  ['Ramen bowl', 550, 'Meals'], ['Pho bowl', 450, 'Meals'],
-  ['Pad thai', 700, 'Meals'], ['Chicken fried rice', 620, 'Meals'],
-  ['Spaghetti & meatballs', 560, 'Meals'], ['Chicken stir-fry', 400, 'Meals'],
-  ['Street tacos (2)', 340, 'Meals'], ['Fish tacos (2)', 500, 'Meals'],
-  ['Chili (1 cup)', 290, 'Meals'], ['Chicken soup (1 cup)', 130, 'Meals'],
-  ['Mac & cheese (1 cup)', 350, 'Meals'],
+  ['Chicken burrito', 950, 'Meals', 45, 95, 42], ['Burrito bowl', 700, 'Meals', 40, 70, 28],
+  ['Turkey sandwich', 350, 'Meals', 22, 40, 10], ['PB&J sandwich', 380, 'Meals', 12, 48, 16],
+  ['Grilled cheese', 400, 'Meals', 14, 34, 23], ['Caesar salad w/ chicken', 470, 'Meals', 37, 15, 29],
+  ['Cobb salad', 520, 'Meals', 40, 12, 34], ['Chicken quesadilla', 520, 'Meals', 28, 40, 27],
+  ['California roll (8 pc)', 255, 'Meals', 8, 38, 7], ['Poke bowl', 550, 'Meals', 35, 60, 18],
+  ['Ramen bowl', 550, 'Meals', 22, 72, 19], ['Pho bowl', 450, 'Meals', 28, 58, 10],
+  ['Pad thai', 700, 'Meals', 28, 85, 26], ['Chicken fried rice', 620, 'Meals', 25, 80, 20],
+  ['Spaghetti & meatballs', 560, 'Meals', 28, 60, 22], ['Chicken stir-fry', 400, 'Meals', 32, 30, 16],
+  ['Street tacos (2)', 340, 'Meals', 18, 30, 16], ['Fish tacos (2)', 500, 'Meals', 24, 48, 23],
+  ['Chili (1 cup)', 290, 'Meals', 22, 25, 11], ['Chicken soup (1 cup)', 130, 'Meals', 10, 12, 4],
+  ['Mac & cheese (1 cup)', 350, 'Meals', 12, 40, 15],
   // Fast food
-  ['Cheeseburger', 550, 'Fast food'], ['Fries (medium)', 340, 'Fast food'],
-  ['Chicken nuggets (10)', 440, 'Fast food'], ['Pizza slice (cheese)', 285, 'Fast food'],
-  ['Pizza slice (pepperoni)', 310, 'Fast food'], ['Hot dog', 300, 'Fast food'],
-  ['Crispy chicken sandwich', 530, 'Fast food'], ['Fish & chips', 800, 'Fast food'],
-  ['Onion rings', 410, 'Fast food'], ['Milkshake (16 oz)', 550, 'Fast food'],
+  ['Cheeseburger', 550, 'Fast food', 28, 42, 29], ['Fries (medium)', 340, 'Fast food', 4, 44, 16],
+  ['Chicken nuggets (10)', 440, 'Fast food', 23, 26, 26], ['Pizza slice (cheese)', 285, 'Fast food', 12, 36, 10],
+  ['Pizza slice (pepperoni)', 310, 'Fast food', 13, 36, 13], ['Hot dog', 300, 'Fast food', 11, 24, 18],
+  ['Crispy chicken sandwich', 530, 'Fast food', 27, 48, 25], ['Fish & chips', 800, 'Fast food', 35, 72, 40],
+  ['Onion rings', 410, 'Fast food', 5, 48, 21], ['Milkshake (16 oz)', 550, 'Fast food', 12, 88, 16],
   // Snacks & sweets
-  ['Almonds (1/4 cup)', 170, 'Snacks & sweets'], ['Peanut butter (2 tbsp)', 190, 'Snacks & sweets'],
-  ['Trail mix (1/4 cup)', 175, 'Snacks & sweets'], ['Protein bar', 210, 'Snacks & sweets'],
-  ['Granola bar', 120, 'Snacks & sweets'], ['Protein shake', 160, 'Snacks & sweets'],
-  ['Chips (1 oz bag)', 150, 'Snacks & sweets'], ['Tortilla chips & salsa', 220, 'Snacks & sweets'],
-  ['Popcorn (3 cups)', 95, 'Snacks & sweets'], ['Pretzels (1 oz)', 110, 'Snacks & sweets'],
-  ['Crackers & cheese', 200, 'Snacks & sweets'], ['Beef jerky (1 oz)', 80, 'Snacks & sweets'],
-  ['Rice cake', 35, 'Snacks & sweets'], ['Dark chocolate (1 oz)', 170, 'Snacks & sweets'],
-  ['Chocolate chip cookie', 160, 'Snacks & sweets'], ['Brownie', 230, 'Snacks & sweets'],
-  ['Glazed donut', 260, 'Snacks & sweets'], ['Blueberry muffin', 380, 'Snacks & sweets'],
-  ['Ice cream (1 cup)', 270, 'Snacks & sweets'], ['Frozen yogurt (1 cup)', 220, 'Snacks & sweets'],
-  ['Candy bar', 250, 'Snacks & sweets'],
+  ['Almonds (1/4 cup)', 170, 'Snacks & sweets', 6, 6, 15], ['Peanut butter (2 tbsp)', 190, 'Snacks & sweets', 8, 7, 16],
+  ['Trail mix (1/4 cup)', 175, 'Snacks & sweets', 5, 16, 11], ['Protein bar', 210, 'Snacks & sweets', 20, 22, 7],
+  ['Granola bar', 120, 'Snacks & sweets', 2, 22, 3], ['Protein shake', 160, 'Snacks & sweets', 30, 6, 2],
+  ['Chips (1 oz bag)', 150, 'Snacks & sweets', 2, 15, 9], ['Tortilla chips & salsa', 220, 'Snacks & sweets', 4, 30, 10],
+  ['Popcorn (3 cups)', 95, 'Snacks & sweets', 3, 19, 1], ['Pretzels (1 oz)', 110, 'Snacks & sweets', 3, 23, 1],
+  ['Crackers & cheese', 200, 'Snacks & sweets', 6, 18, 11], ['Beef jerky (1 oz)', 80, 'Snacks & sweets', 13, 3, 1],
+  ['Rice cake', 35, 'Snacks & sweets', 1, 7, 0], ['Dark chocolate (1 oz)', 170, 'Snacks & sweets', 2, 13, 12],
+  ['Chocolate chip cookie', 160, 'Snacks & sweets', 2, 21, 8], ['Brownie', 230, 'Snacks & sweets', 3, 30, 11],
+  ['Glazed donut', 260, 'Snacks & sweets', 3, 31, 14], ['Blueberry muffin', 380, 'Snacks & sweets', 6, 53, 16],
+  ['Ice cream (1 cup)', 270, 'Snacks & sweets', 5, 31, 14], ['Frozen yogurt (1 cup)', 220, 'Snacks & sweets', 6, 38, 5],
+  ['Candy bar', 250, 'Snacks & sweets', 3, 33, 12],
   // Drinks
-  ['Black coffee', 5, 'Drinks'], ['Latte (12 oz)', 150, 'Drinks'],
-  ['Cappuccino', 80, 'Drinks'], ['Coffee w/ cream & sugar', 70, 'Drinks'],
-  ['Orange juice (8 oz)', 110, 'Drinks'], ['Smoothie (16 oz)', 300, 'Drinks'],
-  ['Sports drink (20 oz)', 130, 'Drinks'], ['Soda (12 oz)', 140, 'Drinks'],
-  ['Diet soda', 0, 'Drinks'], ['Beer (12 oz)', 155, 'Drinks'],
-  ['Light beer', 100, 'Drinks'], ['IPA (16 oz)', 230, 'Drinks'],
-  ['Wine (5 oz)', 125, 'Drinks'], ['Margarita', 280, 'Drinks'],
-  ['Kombucha', 50, 'Drinks'], ['Coconut water', 45, 'Drinks'],
-  ['Iced tea (sweet, 16 oz)', 120, 'Drinks'], ['Energy drink', 160, 'Drinks'],
-].map(([name, kcal, cat]) => ({ name, kcal, cat }));
+  ['Black coffee', 5, 'Drinks', 0, 1, 0], ['Latte (12 oz)', 150, 'Drinks', 8, 12, 8],
+  ['Cappuccino', 80, 'Drinks', 4, 6, 4], ['Coffee w/ cream & sugar', 70, 'Drinks', 1, 8, 4],
+  ['Orange juice (8 oz)', 110, 'Drinks', 2, 26, 0], ['Smoothie (16 oz)', 300, 'Drinks', 4, 65, 2],
+  ['Sports drink (20 oz)', 130, 'Drinks', 0, 34, 0], ['Soda (12 oz)', 140, 'Drinks', 0, 39, 0],
+  ['Diet soda', 0, 'Drinks', 0, 0, 0], ['Beer (12 oz)', 155, 'Drinks', 2, 13, 0],
+  ['Light beer', 100, 'Drinks', 1, 5, 0], ['IPA (16 oz)', 230, 'Drinks', 3, 20, 0],
+  ['Wine (5 oz)', 125, 'Drinks', 0, 4, 0], ['Margarita', 280, 'Drinks', 0, 36, 0],
+  ['Kombucha', 50, 'Drinks', 0, 12, 0], ['Coconut water', 45, 'Drinks', 2, 9, 0],
+  ['Iced tea (sweet, 16 oz)', 120, 'Drinks', 0, 32, 0], ['Energy drink', 160, 'Drinks', 0, 40, 0],
+].map(([name, kcal, cat, p, c, f]) => ({ name, kcal, cat, p, c, f }));
 
 const ACTIVITIES = [
   ['Walking', 3.5], ['Running', 9.0], ['Cycling', 7.5], ['Surfing', 4.0],
@@ -769,6 +817,25 @@ function dayTotals(key) {
   }
   return { eaten, burned };
 }
+function dayMacros(key) {
+  const day = state.days[key];
+  let p = 0, c = 0, f = 0;
+  if (day) for (const e of day.entries) if (e.type === 'food') {
+    p += e.p || 0; c += e.c || 0; f += e.f || 0;
+  }
+  return { p, c, f };
+}
+function proteinTarget() { return Math.round(weightLb() * 1.2); }
+function macroTargets(budget) {
+  const p = proteinTarget();
+  const f = Math.max(0, Math.round(budget * 0.30 / 9));          // ~30% of the day's budget
+  const c = Math.max(0, Math.round((budget - p * 4 - f * 9) / 4)); // carbs fill what's left
+  return { p, c, f };
+}
+function macroLine(e) {
+  if (e.p == null && e.c == null && e.f == null) return '';
+  return 'P ' + (e.p || 0) + ' · C ' + (e.c || 0) + ' · F ' + (e.f || 0);
+}
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function timeLabel(ts) {
   return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -782,17 +849,25 @@ function addEntry(type, name, kcal, extra) {
   saveState();
   return e;
 }
-function bumpRecent(name, kcal) {
+function bumpRecent(name, kcal, macros) {
   const k = name.trim().toLowerCase();
   if (!k) return;
   const r = state.recents[k] || { name: name.trim(), kcal: Math.round(kcal), count: 0, last: 0 };
   r.count += 1; r.last = Date.now(); r.kcal = Math.round(kcal); r.name = name.trim();
+  if (macros) { r.p = macros.p; r.c = macros.c; r.f = macros.f; }
   state.recents[k] = r;
   saveState();
 }
-function logFood(name, kcal, quiet) {
-  addEntry('food', name, kcal);
-  bumpRecent(name, kcal);
+function cleanMacros(m) {
+  if (!m) return null;
+  const out = {};
+  for (const k of ['p', 'c', 'f']) if (isFinite(m[k]) && m[k] >= 0) out[k] = Math.round(m[k]);
+  return Object.keys(out).length ? out : null;
+}
+function logFood(name, kcal, quiet, macros) {
+  const m = cleanMacros(macros);
+  addEntry('food', name, kcal, m);
+  bumpRecent(name, kcal, m);
   if (!quiet) toast('Added — ' + name + ' · ' + fmt(kcal) + ' kcal');
   renderToday(); renderFrequent(); renderHistory();
 }
@@ -911,6 +986,22 @@ function renderToday() {
   $('led-net').textContent = (deficitNow < 0 ? '−' : '') + fmt(Math.abs(deficitNow));
   $('led-goal').textContent = fmt(goalDef);
 
+  // Macros
+  const eatenM = dayMacros(key);
+  const targets = macroTargets(Math.max(0, t.total - goalDef));
+  for (const m of ['p', 'c', 'f']) {
+    $('mac-' + m + '-eaten').textContent = fmt(eatenM[m]);
+    $('mac-' + m + '-target').textContent = fmt(targets[m]);
+    const bar = $('mac-' + m + '-bar');
+    bar.style.width = Math.min(100, eatenM[m] / Math.max(1, targets[m]) * 100) + '%';
+    if (m !== 'p') bar.classList.toggle('over', eatenM[m] > targets[m] * 1.15);
+  }
+  const pLeft = targets.p - eatenM.p;
+  $('mac-p-note').textContent = pLeft > 0
+    ? fmt(pLeft) + ' g of protein to go — 1.2 g per lb of bodyweight.'
+    : 'Protein target hit — ' + fmt(eatenM.p) + ' g on the day.';
+  $('macro-hint').textContent = 'Carb and fat marks are drawn from today’s eating budget — fat near 30% of it, carbs filling the rest around your protein.';
+
   // Entries
   const day = state.days[key];
   const list = $('today-entries');
@@ -921,9 +1012,11 @@ function renderToday() {
   const rows = day.entries.slice().sort((a, b) => b.ts - a.ts);
   list.innerHTML = rows.map(e => {
     const burn = e.type !== 'food';
+    const mac = burn ? '' : macroLine(e);
     return '<div class="entry" data-id="' + e.id + '">' +
       '<span class="entry-dot' + (burn ? ' burn' : '') + '"></span>' +
-      '<span class="entry-name">' + esc(e.name) + '</span>' +
+      '<span class="entry-main"><span class="entry-name">' + esc(e.name) + '</span>' +
+      (mac ? '<span class="entry-macros">' + mac + '</span>' : '') + '</span>' +
       '<span class="entry-time">' + timeLabel(e.ts) + '</span>' +
       '<span class="entry-kcal' + (burn ? ' burn' : '') + '">' + (burn ? '−' : '') + fmt(e.kcal) + '</span>' +
       '<button class="entry-del" aria-label="Delete">×</button></div>';
@@ -966,7 +1059,7 @@ function coachSearch(q) {
   const recentHits = Object.values(state.recents)
     .filter(r => r.name.toLowerCase().includes(ql) && !hits.some(h => h.name.toLowerCase() === r.name.toLowerCase()))
     .slice(0, 2);
-  const all = [...recentHits.map(r => ({ name: r.name, kcal: r.kcal })), ...hits];
+  const all = [...recentHits.map(r => ({ name: r.name, kcal: r.kcal, p: r.p, c: r.c, f: r.f })), ...hits];
 
   if (!all.length) {
     coachPick = null;
@@ -1021,6 +1114,11 @@ function renderVerdict() {
       ' kcal past everything you’ll burn today</b> — surplus territory. If you really want it: half a portion (' +
       fmt(kcal / 2) + ' kcal) sits closer, or offset with a <b>' + offset + '-min walk</b> / <b>' + runOffset + '-min run</b>.';
   }
+  if (isFinite(coachPick.p) && coachPick.p > 0) {
+    const pLeft = proteinTarget() - dayMacros(todayKey()).p;
+    body += ' Also <b>' + fmt(coachPick.p) + ' g protein</b>' +
+      (pLeft > 0 ? ' toward the ' + fmt(pLeft) + ' g you still need.' : '.');
+  }
 
   $('coach-verdict').innerHTML =
     '<div class="verdict"><div class="verdict-word ' + cls + '">' + word + '</div>' +
@@ -1030,7 +1128,7 @@ function renderVerdict() {
     '<button class="btn" id="coach-log">Log it (' + fmt(kcal) + ')</button>' +
     '</div></div>';
   $('coach-log').addEventListener('click', () => {
-    logFood(name, kcal);
+    logFood(name, kcal, false, coachPick);
     $('coach-input').value = ''; $('coach-matches').innerHTML = ''; $('coach-verdict').innerHTML = '';
     coachPick = null;
   });
@@ -1060,8 +1158,8 @@ $('qa-add').addEventListener('click', () => {
   const name = $('qa-name').value.trim() || 'Quick add';
   const kcal = parseNum($('qa-kcal').value);
   if (!isFinite(kcal) || kcal < 0) { toast('Enter the calories'); $('qa-kcal').focus(); return; }
-  logFood(name, kcal);
-  $('qa-name').value = ''; $('qa-kcal').value = '';
+  logFood(name, kcal, false, { p: parseNum($('qa-p').value), c: parseNum($('qa-c').value), f: parseNum($('qa-f').value) });
+  $('qa-name').value = ''; $('qa-kcal').value = ''; $('qa-p').value = ''; $('qa-c').value = ''; $('qa-f').value = '';
 });
 $('qa-kcal').addEventListener('keydown', e => { if (e.key === 'Enter') $('qa-add').click(); });
 
@@ -1078,7 +1176,7 @@ function renderFrequent() {
   $('frequent-chips').querySelectorAll('.chip').forEach(ch =>
     ch.addEventListener('click', () => {
       const r = items[parseInt(ch.dataset.i, 10)];
-      logFood(r.name, r.kcal);
+      logFood(r.name, r.kcal, false, r);
     }));
 }
 
@@ -1093,14 +1191,18 @@ function renderDb(query) {
   let html = '', lastCat = '';
   for (const f of foods) {
     if (f.cat !== lastCat) { html += '<div class="db-cat">' + esc(f.cat) + '</div>'; lastCat = f.cat; }
-    html += '<div class="db-row" data-name="' + esc(f.name) + '" data-kcal="' + f.kcal + '">' +
-      '<span class="db-name">' + esc(f.name) + '</span>' +
+    html += '<div class="db-row" data-name="' + esc(f.name) + '">' +
+      '<span class="db-main"><span class="db-name">' + esc(f.name) + '</span>' +
+      '<span class="db-macros">' + macroLine(f) + '</span></span>' +
       '<span class="db-kcal">' + fmt(f.kcal) + '</span>' +
       '<span class="db-add">+</span></div>';
   }
   list.innerHTML = html;
   list.querySelectorAll('.db-row').forEach(row =>
-    row.addEventListener('click', () => logFood(row.dataset.name, parseInt(row.dataset.kcal, 10))));
+    row.addEventListener('click', () => {
+      const f = FOODS.find(x => x.name === row.dataset.name);
+      if (f) logFood(f.name, f.kcal, false, f);
+    }));
 }
 $('db-search').addEventListener('input', e => renderDb(e.target.value));
 
@@ -1223,7 +1325,8 @@ function renderHistory() {
     return '<div class="day-row" data-k="' + k + '">' +
       '<div class="day-head"><span class="day-date">' + label + '</span>' +
       '<span class="day-net ' + cls + '">' + chip + '</span></div>' +
-      '<div class="day-meta">' + fmt(eaten) + ' eaten · ' + fmt(total) + ' burned · goal ' + fmt(goalDef) + ' deficit</div>' +
+      '<div class="day-meta">' + fmt(eaten) + ' eaten · ' + fmt(total) + ' burned · goal ' + fmt(goalDef) + ' deficit' +
+      (dayMacros(k).p > 0 ? ' · ' + fmt(dayMacros(k).p) + ' g protein' : '') + '</div>' +
       '<div class="day-bar"><i class="' + barCls.trim() + '" style="width:' + Math.min(100, frac * 100) + '%"></i></div>' +
       '<div class="day-detail" id="detail-' + k + '"></div></div>';
   }).join('');
@@ -1243,9 +1346,11 @@ function renderDayDetail(k) {
   const isToday = k === todayKey();
   el.innerHTML = '<div class="entry-list">' + day.entries.slice().sort((a, b) => b.ts - a.ts).map(e => {
     const burn = e.type !== 'food';
+    const mac = burn ? '' : macroLine(e);
     return '<div class="entry" data-id="' + e.id + '">' +
       '<span class="entry-dot' + (burn ? ' burn' : '') + '"></span>' +
-      '<span class="entry-name">' + esc(e.name) + '</span>' +
+      '<span class="entry-main"><span class="entry-name">' + esc(e.name) + '</span>' +
+      (mac ? '<span class="entry-macros">' + mac + '</span>' : '') + '</span>' +
       '<span class="entry-kcal' + (burn ? ' burn' : '') + '">' + (burn ? '−' : '') + fmt(e.kcal) + '</span>' +
       '<button class="entry-del" aria-label="Delete">×</button></div>';
   }).join('') + '</div>';
@@ -1276,9 +1381,14 @@ function openSheet(dayKey, id) {
   const e = day && day.entries.find(x => x.id === id);
   if (!e) return;
   sheetTarget = { dayKey, id };
-  $('sheet-title').textContent = e.type === 'food' ? 'Edit food' : 'Edit activity';
+  const food = e.type === 'food';
+  $('sheet-title').textContent = food ? 'Edit food' : 'Edit activity';
   $('sheet-name').value = e.name;
   $('sheet-kcal').value = e.kcal;
+  $('sheet-macros').style.display = food ? '' : 'none';
+  $('sheet-p').value = e.p != null ? e.p : '';
+  $('sheet-c').value = e.c != null ? e.c : '';
+  $('sheet-f').value = e.f != null ? e.f : '';
   document.body.classList.add('sheet-open');
 }
 function closeSheet() {
@@ -1296,6 +1406,12 @@ $('sheet-save').addEventListener('click', () => {
   if (!isFinite(kcal) || kcal < 0) { toast('Enter valid calories'); return; }
   e.name = $('sheet-name').value.trim() || e.name;
   e.kcal = Math.round(kcal);
+  if (e.type === 'food') {
+    for (const [k, id2] of [['p', 'sheet-p'], ['c', 'sheet-c'], ['f', 'sheet-f']]) {
+      const v = parseNum($(id2).value);
+      if (isFinite(v) && v >= 0) e[k] = Math.round(v); else delete e[k];
+    }
+  }
   saveState();
   closeSheet();
   toast('Updated');

@@ -369,6 +369,8 @@ input, select, button, textarea { font-family: inherit; color: inherit; }
 body.sheet-open #sheet-backdrop { opacity: 1; pointer-events: auto; }
 body.sheet-open #sheet { transform: translateY(0); }
 .sheet-title { font-family: var(--serif); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 16px; }
+#sheet-seg { margin-bottom: 14px; }
+.day-add { margin-top: 12px; padding: 12px 14px; font-size: 14px; }
 .sheet-actions { display: flex; gap: 10px; margin-top: 4px; }
 
 /* ── Toast ── */
@@ -527,7 +529,7 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
         <input class="field" id="steps-input" type="text" inputmode="numeric" placeholder="e.g. 8500" autocomplete="off">
         <div class="estimate" id="steps-estimate">Enter your step count.</div>
         <button class="btn" id="steps-save">Set today’s steps</button>
-        <p class="hint">This sets your total for the day — entering a new number replaces the old one, so you can update it as the day goes on. Steps convert to calories using your body weight.</p>
+        <p class="hint">This sets your total for the day — entering a new number replaces the old one, so you can update it as the day goes on. Steps convert at their net cost — only the burn above what the tide already counts.</p>
       </div>
       <div class="card">
         <div class="card-label">Auto-sync from Apple Health</div>
@@ -583,7 +585,7 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
       </div>
       <div class="set-row">
         <div class="set-label">Maintenance calories</div>
-        <div class="set-desc">Roughly what you burn in a day before exercise (TDEE). This drives the tide — your burn accrues from it minute by minute through the day, with workouts and steps on top. Leave blank to estimate from your weight.</div>
+        <div class="set-desc">Roughly what you burn in a day before exercise and steps (sedentary TDEE). This drives the tide — your burn accrues from it minute by minute, with workouts and steps credited on top at their net cost. Leave blank to estimate from your weight.</div>
         <div class="set-inline">
           <input class="field" id="set-maint" type="text" inputmode="numeric" autocomplete="off" placeholder="">
           <span class="set-unit">kcal</span>
@@ -637,6 +639,11 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
 <div id="sheet-backdrop"></div>
 <div id="sheet">
   <div class="sheet-title" id="sheet-title">Edit entry</div>
+  <div class="seg mini" id="sheet-seg" style="display:none">
+    <button data-t="food" class="active">Food</button>
+    <button data-t="workout">Workout</button>
+    <button data-t="steps">Steps</button>
+  </div>
   <div class="form-row">
     <input class="field grow" id="sheet-name" type="text" autocomplete="off">
     <input class="field kcal-w" id="sheet-kcal" type="text" inputmode="numeric" autocomplete="off">
@@ -764,7 +771,7 @@ function loadState() {
         s.settings = Object.assign({}, DEFAULTS, prior);
         // Migrate from the old net-calorie goal: deficit = maintenance − goal
         if (prior.deficitGoal == null && isFinite(prior.goal)) {
-          const maintEst = s.settings.maint || Math.round(s.settings.weightKg * 2.20462 * 14);
+          const maintEst = s.settings.maint || Math.round(s.settings.weightKg * 2.20462 * 13);
           s.settings.deficitGoal = Math.min(2000, Math.max(0, Math.round((maintEst - prior.goal) / 10) * 10));
         }
         delete s.settings.goal;
@@ -796,14 +803,16 @@ function keyToDate(key) {
 }
 function weightLb() { return state.settings.weightKg * 2.20462; }
 function maintenance() {
-  return state.settings.maint || Math.round(weightLb() * 14);
+  // ×13 ≈ sedentary TDEE — steps and workouts are credited separately, net
+  return state.settings.maint || Math.round(weightLb() * 13);
 }
 function workoutKcal(met, mins) {
-  return met * 3.5 * state.settings.weightKg / 200 * mins;
+  // Net METs: subtract the resting 1.0 the tide is already counting
+  return (met - 1) * 3.5 * state.settings.weightKg / 200 * mins;
 }
 function stepsKcal(steps) {
-  // ~0.53 kcal per lb per mile, ~2,100 steps per mile
-  return steps * 0.000252 * weightLb();
+  // Net walking cost above resting: ~0.30 kcal per lb per mile, ~2,100 steps per mile
+  return steps * 0.000143 * weightLb();
 }
 function getDay(key) {
   if (!state.days[key]) state.days[key] = { entries: [] };
@@ -871,16 +880,20 @@ function logFood(name, kcal, quiet, macros) {
   if (!quiet) toast('Added — ' + name + ' · ' + fmt(kcal) + ' kcal');
   renderToday(); renderFrequent(); renderHistory();
 }
-function setSteps(steps) {
+function setSteps(steps, dayKey) {
   steps = Math.round(steps);
+  const key = dayKey || todayKey();
+  const today = key === todayKey();
   const kcal = Math.round(stepsKcal(steps));
-  const day = getDay(todayKey());
+  const day = getDay(key);
   const existing = day.entries.find(e => e.type === 'steps');
   if (existing) {
     existing.kcal = kcal; existing.steps = steps;
-    existing.name = 'Steps — ' + fmt(steps); existing.ts = Date.now();
+    existing.name = 'Steps — ' + fmt(steps);
+    if (today) existing.ts = Date.now();
   } else {
-    addEntry('steps', 'Steps — ' + fmt(steps), kcal, { steps });
+    const ts = today ? Date.now() : keyToDate(key).getTime() + 12 * 36e5;
+    day.entries.push({ id: uid(), type: 'steps', name: 'Steps — ' + fmt(steps), kcal, steps, ts });
   }
   saveState();
   toast('Steps set — ' + fmt(steps) + ' (≈ ' + fmt(kcal) + ' kcal)');
@@ -1332,7 +1345,7 @@ function renderHistory() {
   }).join('');
   list.querySelectorAll('.day-row').forEach(row => {
     row.addEventListener('click', e => {
-      if (e.target.closest('.entry-del') || e.target.closest('.entry')) return;
+      if (e.target.closest('.entry-del') || e.target.closest('.entry') || e.target.closest('.day-add')) return;
       const open = row.classList.toggle('open');
       if (open) renderDayDetail(row.dataset.k);
     });
@@ -1343,7 +1356,6 @@ function renderDayDetail(k) {
   if (!el) return;
   const day = state.days[k];
   if (!day || !day.entries.length) { el.innerHTML = '<div class="empty">Nothing here.</div>'; return; }
-  const isToday = k === todayKey();
   el.innerHTML = '<div class="entry-list">' + day.entries.slice().sort((a, b) => b.ts - a.ts).map(e => {
     const burn = e.type !== 'food';
     const mac = burn ? '' : macroLine(e);
@@ -1353,7 +1365,12 @@ function renderDayDetail(k) {
       (mac ? '<span class="entry-macros">' + mac + '</span>' : '') + '</span>' +
       '<span class="entry-kcal' + (burn ? ' burn' : '') + '">' + (burn ? '−' : '') + fmt(e.kcal) + '</span>' +
       '<button class="entry-del" aria-label="Delete">×</button></div>';
-  }).join('') + '</div>';
+  }).join('') + '</div>' +
+  '<button class="btn secondary day-add">Add to this day</button>';
+  el.querySelector('.day-add').addEventListener('click', ev => {
+    ev.stopPropagation();
+    openAddSheet(k);
+  });
   el.querySelectorAll('.entry').forEach(row => {
     const id = row.dataset.id;
     row.querySelector('.entry-del').addEventListener('click', ev => {
@@ -1367,37 +1384,93 @@ function renderDayDetail(k) {
     });
     row.addEventListener('click', ev => {
       ev.stopPropagation();
-      if (isToday) openSheet(k, id);
+      openSheet(k, id);
     });
   });
 }
 
 /* ═══════════ Edit sheet ═══════════ */
 
-let sheetTarget = null;
+let sheetTarget = null;   // { dayKey, id } — editing an existing entry
+let sheetAdd = null;      // { dayKey, type } — adding to a (past) day
 
+function dayLabel(k) {
+  return k === todayKey() ? 'Today'
+    : keyToDate(k).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
 function openSheet(dayKey, id) {
   const day = state.days[dayKey];
   const e = day && day.entries.find(x => x.id === id);
   if (!e) return;
-  sheetTarget = { dayKey, id };
+  sheetTarget = { dayKey, id }; sheetAdd = null;
   const food = e.type === 'food';
   $('sheet-title').textContent = food ? 'Edit food' : 'Edit activity';
+  $('sheet-seg').style.display = 'none';
+  $('sheet-name').style.display = '';
   $('sheet-name').value = e.name;
   $('sheet-kcal').value = e.kcal;
+  $('sheet-kcal').placeholder = 'kcal';
   $('sheet-macros').style.display = food ? '' : 'none';
   $('sheet-p').value = e.p != null ? e.p : '';
   $('sheet-c').value = e.c != null ? e.c : '';
   $('sheet-f').value = e.f != null ? e.f : '';
   document.body.classList.add('sheet-open');
 }
+function openAddSheet(dayKey) {
+  sheetTarget = null; sheetAdd = { dayKey, type: 'food' };
+  $('sheet-title').textContent = 'Add — ' + dayLabel(dayKey);
+  $('sheet-seg').style.display = '';
+  $('sheet-name').value = ''; $('sheet-kcal').value = '';
+  $('sheet-p').value = ''; $('sheet-c').value = ''; $('sheet-f').value = '';
+  setAddType('food');
+  document.body.classList.add('sheet-open');
+}
+function setAddType(t) {
+  sheetAdd.type = t;
+  $('sheet-seg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.t === t));
+  $('sheet-name').style.display = t === 'steps' ? 'none' : '';
+  $('sheet-name').placeholder = t === 'workout' ? 'Activity name' : 'What was it?';
+  $('sheet-kcal').placeholder = t === 'steps' ? 'steps' : 'kcal';
+  $('sheet-macros').style.display = t === 'food' ? '' : 'none';
+}
+$('sheet-seg').querySelectorAll('button').forEach(b =>
+  b.addEventListener('click', () => setAddType(b.dataset.t)));
 function closeSheet() {
-  sheetTarget = null;
+  sheetTarget = null; sheetAdd = null;
   document.body.classList.remove('sheet-open');
+}
+function reopenDay(k) {
+  const row = document.querySelector('.day-row[data-k="' + k + '"]');
+  if (row) { row.classList.add('open'); renderDayDetail(k); }
 }
 $('sheet-cancel').addEventListener('click', closeSheet);
 $('sheet-backdrop').addEventListener('click', closeSheet);
 $('sheet-save').addEventListener('click', () => {
+  if (sheetAdd) {
+    const { dayKey, type } = sheetAdd;
+    const n = parseNum($('sheet-kcal').value);
+    if (!isFinite(n) || n <= 0) { toast(type === 'steps' ? 'Enter a step count' : 'Enter the calories'); return; }
+    if (type === 'steps') {
+      setSteps(n, dayKey);
+    } else {
+      const name = $('sheet-name').value.trim() || (type === 'food' ? 'Quick add' : 'Workout');
+      const ts = dayKey === todayKey() ? Date.now() : keyToDate(dayKey).getTime() + 12 * 36e5;
+      const e = { id: uid(), type, name, kcal: Math.round(n), ts };
+      if (type === 'food') {
+        const m = cleanMacros({ p: parseNum($('sheet-p').value), c: parseNum($('sheet-c').value), f: parseNum($('sheet-f').value) });
+        if (m) Object.assign(e, m);
+        bumpRecent(name, n, m);
+      }
+      getDay(dayKey).entries.push(e);
+      saveState();
+      toast('Added to ' + dayLabel(dayKey) + ' — ' + name);
+      renderToday(); renderHistory();
+    }
+    const k = dayKey;
+    closeSheet();
+    reopenDay(k);
+    return;
+  }
   if (!sheetTarget) return;
   const day = state.days[sheetTarget.dayKey];
   const e = day && day.entries.find(x => x.id === sheetTarget.id);
@@ -1412,10 +1485,12 @@ $('sheet-save').addEventListener('click', () => {
       if (isFinite(v) && v >= 0) e[k] = Math.round(v); else delete e[k];
     }
   }
+  const dayKey = sheetTarget.dayKey;
   saveState();
   closeSheet();
   toast('Updated');
   renderToday(); renderHistory();
+  reopenDay(dayKey);
 });
 
 /* ═══════════ Settings ═══════════ */
@@ -1429,7 +1504,7 @@ function renderSettings() {
   $('set-weight').value = metric ? Math.round(s.weightKg * 10) / 10 : Math.round(weightLb());
   $('set-weight-unit').textContent = metric ? 'kg' : 'lb';
   $('set-maint').value = s.maint || '';
-  $('set-maint').placeholder = '≈ ' + fmt(Math.round(weightLb() * 14)) + ' (estimated)';
+  $('set-maint').placeholder = '≈ ' + fmt(Math.round(weightLb() * 13)) + ' (estimated)';
 }
 $('set-goal').addEventListener('change', e => {
   const n = parseNum(e.target.value);

@@ -529,7 +529,7 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
         <input class="field" id="steps-input" type="text" inputmode="numeric" placeholder="e.g. 8500" autocomplete="off">
         <div class="estimate" id="steps-estimate">Enter your step count.</div>
         <button class="btn" id="steps-save">Set today’s steps</button>
-        <p class="hint">This sets your total for the day — entering a new number replaces the old one, so you can update it as the day goes on. Steps convert at their net cost — only the burn above what the tide already counts.</p>
+        <p class="hint">This sets your total for the day — entering a new number replaces the old one, so you can update it as the day goes on. Steps count 42.5 kcal per 1,000.</p>
       </div>
       <div class="card">
         <div class="card-label">Auto-sync from Apple Health</div>
@@ -577,7 +577,7 @@ h3.block-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; mar
       </div>
       <div class="set-row">
         <div class="set-label">Body weight</div>
-        <div class="set-desc">Sharpens workout and step burn estimates.</div>
+        <div class="set-desc">Sharpens workout burn estimates. Steps use a fixed 42.5 kcal per 1,000.</div>
         <div class="set-inline">
           <input class="field" id="set-weight" type="text" inputmode="decimal" autocomplete="off">
           <span class="set-unit" id="set-weight-unit">lb</span>
@@ -811,8 +811,8 @@ function workoutKcal(met, mins) {
   return (met - 1) * 3.5 * state.settings.weightKg / 200 * mins;
 }
 function stepsKcal(steps) {
-  // Net walking cost above resting: ~0.30 kcal per lb per mile, ~2,100 steps per mile
-  return steps * 0.000143 * weightLb();
+  // Fixed rate: every 1,000 steps counts 42.5 kcal
+  return steps * 0.0425;
 }
 function getDay(key) {
   if (!state.days[key]) state.days[key] = { entries: [] };
